@@ -1,7 +1,5 @@
 # MultitaskingGaussian
 
--------------------------------------------
-![introduction](assets/teaser.png)
 
 ## ⚙️ Setup
 ```bash
