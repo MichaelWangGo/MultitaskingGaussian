@@ -1,22 +1,11 @@
-# EndoGaussian: Real-time Gaussian Splatting for Dynamic Endoscopic Scene Reconstruction
-
-### [Project Page](https://yifliu3.github.io/EndoGaussian/) | [arXiv Paper](http://arxiv.org/abs/2401.12561)
-
-
-[Yifan Liu](https://yifliu3.github.io/)<sup>1*</sup>, [Chenxin Li](https://xggnet.github.io/)<sup>1*</sup>,
-[Chen Yang](https://scholar.google.com/citations?user=C6fAQeIAAAAJ&hl)<sup>2</sup>, [Yixuan Yuan](https://www.ee.cuhk.edu.hk/en-gb/people/academic-staff/professors/prof-yixuan-yuan)<sup>1✉</sup>
-
-<sup>1</sup>Department of Electronic Engineering, CUHK &emsp; <sup>2</sup>Department of Electrical Engineering, CityU &emsp;
-
-<sup>\*</sup> Equal Contributions. <sup>✉</sup> Corresponding Author. 
+# MultitaskingGaussian
 
 -------------------------------------------
 ![introduction](assets/teaser.png)
 
 ## ⚙️ Setup
 ```bash
-git clone https://github.com/yifliu3/EndoGaussian.git
-cd EndoGaussian
+
 git submodule update --init --recursive
 conda create -n EndoGaussian python=3.7 
 conda activate EndoGaussian
@@ -78,14 +67,3 @@ Some source code of ours is borrowed from [3DGS](https://github.com/graphdeco-i
 
 
 ## 📜 Citation
-If you find this repository/work helpful in your research, welcome to cite this paper and give a ⭐. 
-```
-@misc{liu2024endogaussian,
-      title={EndoGaussian: Gaussian Splatting for Deformable Surgical Scene Reconstruction}, 
-      author={Yifan Liu and Chenxin Li and Chen Yang and Yixuan Yuan},
-      year={2024},
-      eprint={2401.12561},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV}
-}
-```
