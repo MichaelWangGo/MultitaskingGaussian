@@ -45,7 +45,7 @@ You can customize your training config through the config files.
 Run the following script to render the images.  
 
 ```
-python render.py --model_path output/endonerf/pulling  --skip_train --skip_video --configs arguments/endonerf/pulling.py
+python render.py --model_path output/endonerf/pulling --reconstruct --configs arguments/endonerf/pulling.py
 ```
 You can use `--skip_train`, `--skip_test`, and `--skip_video` to skip rendering images of training, testing, and video set. By default, all three sets are rendered.
 
