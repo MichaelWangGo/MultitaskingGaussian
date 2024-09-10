@@ -101,49 +101,77 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         if (iteration - 1) == debug_from:
             pipe.debug = True
             
-        images = []
-        depths = []
+        images_tissue = []
+        images_tools = []
+        depths_tissue = []
+        depths_tools = []
         gt_images = []
         gt_depths = []
         masks = []
         
-        radii_list = []
-        visibility_filter_list = []
+        visibility_filter_tissue_list = []
+        visibility_filter_tools_list = []
+        radii_tissue_list = []
+        radii_tools_list = []
         viewspace_point_tensor_list = []
         
         for viewpoint_cam in viewpoint_cams:
             render_pkg = render(viewpoint_cam, gaussians, pipe, background, stage=stage)
-            image, depth, viewspace_point_tensor, visibility_filter, radii = \
-                render_pkg["render"], render_pkg["depth"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
+            # image, depth, viewspace_point_tensor, visibility_filter, radii = \
+            #     render_pkg["render"], render_pkg["depth"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
+            # import ipdb; ipdb.set_trace()
+            image_tissue, image_tools, depth_tissue, depth_tools, viewspace_point_tensor, visibility_filter_tissue, visibility_filter_tools, radii_tissue, radii_tools = \
+                render_pkg["render_tissue"],render_pkg["render_tools"], render_pkg["depth_tissue"],render_pkg["depth_tools"], render_pkg["viewspace_points"],\
+                render_pkg["visibility_filter_tissue"], render_pkg["visibility_filter_tools"], render_pkg["radii_tissue"], render_pkg["radii_tools"]
             gt_image = viewpoint_cam.original_image.cuda().float()
             gt_depth = viewpoint_cam.original_depth.cuda().float()
             mask = viewpoint_cam.mask.cuda()
+
+            images_tissue.append(image_tissue.unsqueeze(0))
+            images_tools.append(image_tools.unsqueeze(0))
+            depths_tissue.append(depth_tissue.unsqueeze(0))
+            depths_tools.append(depth_tools.unsqueeze(0))
             
-            images.append(image.unsqueeze(0))
-            depths.append(depth.unsqueeze(0))
+            # images.append(image.unsqueeze(0))
+            # depths.append(depth.unsqueeze(0))
+
             gt_images.append(gt_image.unsqueeze(0))
             gt_depths.append(gt_depth.unsqueeze(0))
             masks.append(mask.unsqueeze(0))
-            radii_list.append(radii.unsqueeze(0))
-            visibility_filter_list.append(visibility_filter.unsqueeze(0))
+            radii_tissue_list.append(radii_tissue.unsqueeze(0))
+            radii_tools_list.append(radii_tools.unsqueeze(0))
+            visibility_filter_tissue_list.append(visibility_filter_tissue.unsqueeze(0))
+            visibility_filter_tools_list.append(visibility_filter_tools.unsqueeze(0))
             viewspace_point_tensor_list.append(viewspace_point_tensor)
             
-        radii = torch.cat(radii_list,0).max(dim=0).values
-        visibility_filter = torch.cat(visibility_filter_list).any(dim=0)
-        rendered_images = torch.cat(images,0)
-        rendered_depths = torch.cat(depths, 0)
+        radii_tissue = torch.cat(radii_tissue_list,0).max(dim=0).values
+        radii_tools = torch.cat(radii_tools_list,0).max(dim=0).values
+        visibility_filter_tissue = torch.cat(visibility_filter_tissue_list).any(dim=0)
+        visibility_filter_tools = torch.cat(visibility_filter_tools_list).any(dim=0)
+
+        # rendered_images = torch.cat(images,0)
+        # rendered_depths = torch.cat(depths, 0)
+
+        rendered_images_tissue = torch.cat(images_tissue,0)
+        rendered_images_tools = torch.cat(images_tools,0)
+        rendered_depths_tissue = torch.cat(depths_tissue,0)
+        rendered_depths_tools = torch.cat(depths_tools,0)
+
         gt_images = torch.cat(gt_images,0)
         gt_depths = torch.cat(gt_depths, 0)
         masks = torch.cat(masks, 0)
         
-        Ll1 = l1_loss(rendered_images, gt_images, masks)
+        # Ll1 = l1_loss(rendered_images, gt_images, masks)
+        Ll1 = l1_loss(rendered_images_tissue, gt_images, masks)
         
         if (gt_depths!=0).sum() < 10:
             depth_loss = torch.tensor(0.).cuda()
         elif scene.mode == 'binocular':
-            rendered_depths[rendered_depths!=0] = 1 / rendered_depths[rendered_depths!=0]
+            # rendered_depths[rendered_depths!=0] = 1 / rendered_depths[rendered_depths!=0]
+            rendered_depths_tissue[rendered_depths_tissue!=0] = 1 / rendered_depths_tissue[rendered_depths_tissue!=0]
             gt_depths[gt_depths!=0] = 1 / gt_depths[gt_depths!=0]
-            depth_loss = l1_loss(rendered_depths, gt_depths, masks)
+            # depth_loss = l1_loss(rendered_depths, gt_depths, masks)
+            depth_loss = l1_loss(rendered_depths_tissue, gt_depths, masks)
         elif scene.mode == 'monocular':
             rendered_depths_reshape = rendered_depths.reshape(-1, 1)
             gt_depths_reshape = gt_depths.reshape(-1, 1)
@@ -153,27 +181,36 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
         else:
             raise ValueError(f"{scene.mode} is not implemented.")
         
-        depth_tvloss = TV_loss(rendered_depths)
-        img_tvloss = TV_loss(rendered_images)
+        # depth_tvloss = TV_loss(rendered_depths)
+        depth_tvloss = TV_loss(rendered_depths_tissue)
+        # img_tvloss = TV_loss(rendered_images)
+        img_tvloss = TV_loss(rendered_images_tissue)
         tv_loss = 0.03 * (img_tvloss + depth_tvloss)
         
         loss = Ll1 + depth_loss + tv_loss
+        loss += viewspace_point_tensor.sum() * 0.001 
 
-        psnr_ = psnr(rendered_images, gt_images, masks).mean().double()        
+        # import ipdb; ipdb.set_trace()
+
+        # psnr_ = psnr(rendered_images, gt_images, masks).mean().double()  
+        psnr_ = psnr(rendered_images_tissue, gt_images, masks).mean().double()      
         
         if stage == "fine" and hyper.time_smoothness_weight != 0:
             tv_loss = gaussians.compute_regulation(2e-2, 2e-2, 2e-2)
             loss += tv_loss
         if opt.lambda_dssim != 0:
-            ssim_loss = ssim(rendered_images,gt_images)
+            # ssim_loss = ssim(rendered_images,gt_images)
+            ssim_loss = ssim(rendered_images_tissue,gt_images)
             loss += opt.lambda_dssim * (1.0-ssim_loss)
         if opt.lambda_lpips !=0:
-            lpipsloss = lpips_loss(rendered_images,gt_images,lpips_model)
+            # lpipsloss = lpips_loss(rendered_images,gt_images,lpips_model)
+            lpipsloss = lpips_loss(rendered_images_tissue,gt_images,lpips_model)
             loss += opt.lambda_lpips * lpipsloss
-        
+        # import ipdb; ipdb.set_trace()
         loss.backward()
         viewspace_point_tensor_grad = torch.zeros_like(viewspace_point_tensor)
         for idx in range(0, len(viewspace_point_tensor_list)):
+            # import ipdb; ipdb.set_trace()
             viewspace_point_tensor_grad = viewspace_point_tensor_grad + viewspace_point_tensor_list[idx].grad
         iter_end.record()
 
@@ -208,8 +245,19 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
             # Densification
             if iteration < opt.densify_until_iter :
                 # Keep track of max radii in image-space for pruning
-                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor_grad, visibility_filter)
+                # import ipdb; ipdb.set_trace()
+                print('iteration', iteration)
+                print('number of visibility_filter_', torch.cat((visibility_filter_tissue, visibility_filter_tools), dim=0).shape)
+                print('number of gaussians.max_radii2D', gaussians.max_radii2D.shape)
+                # print('number of visibility_filter_', torch.cat((visibility_filter_tissue, visibility_filter_tools), dim=0).shape)
+
+                gaussians.max_radii2D[torch.cat((visibility_filter_tissue, visibility_filter_tools), dim=0)] = \
+                        torch.max(gaussians.max_radii2D[torch.cat((visibility_filter_tissue, visibility_filter_tools), dim=0)], \
+                        torch.cat((radii_tissue,radii_tools), dim=0)[torch.cat((visibility_filter_tissue, visibility_filter_tools), dim=0)])
+                gaussians.add_densification_stats(torch.cat((viewspace_point_tensor_grad,viewspace_point_tensor_grad), dim=0), \
+                        torch.cat((visibility_filter_tissue,visibility_filter_tools),dim=0))
+                # gaussians.add_densification_stats(viewspace_point_tensor_grad, visibility_filter_tissue)
+                # gaussians.add_densification_stats(viewspace_point_tensor_grad, visibility_filter_tools)
 
                 if stage == "coarse":
                     opacity_threshold = opt.opacity_threshold_coarse
@@ -237,13 +285,13 @@ def scene_reconstruction(dataset, opt, hyper, pipe, testing_iterations, saving_i
             
             if (iteration in checkpoint_iterations):
                 print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
                 torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
 
 def training(dataset, hyper, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from, expname, extra_mark):
     
     tb_writer = prepare_output_and_logger(expname)
-    gaussians = GaussianModel(dataset.sh_degree, hyper, 2)
+    gaussians = GaussianModel(dataset.sh_degree, hyper, class_num=2)
     dataset.model_path = args.model_path
     timer = Timer()
     scene = Scene(dataset, gaussians, load_coarse=args.no_fine)

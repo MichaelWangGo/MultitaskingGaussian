@@ -45,6 +45,7 @@ def render_training_image(scene, gaussians, viewpoints, render_func, pipe, backg
         draw1.text(label2_position, label2, fill=text_color, font=font)
         
         image_with_labels.save(path)
+        
     render_base_path = os.path.join(scene.model_path, f"{stage}_render")
     point_cloud_path = os.path.join(render_base_path,"pointclouds")
     image_path = os.path.join(render_base_path,"images")

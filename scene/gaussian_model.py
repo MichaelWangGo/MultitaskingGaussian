@@ -61,7 +61,7 @@ class GaussianModel:
         self.spatial_lr_scale = 0
         self.setup_functions()
 
-        self.class_num = 0
+        self.class_num = 2
         # import ipdb; ipdb.set_trace()
 
     def capture(self):
@@ -365,6 +365,8 @@ class GaussianModel:
         self._deformation_table = self._deformation_table[valid_points_mask]
         self.denom = self.denom[valid_points_mask]
         self.max_radii2D = self.max_radii2D[valid_points_mask]
+        print('shape of valid_points_mask', valid_points_mask.shape)
+        print('shape of self.max_radii2D', self.max_radii2D.shape)
 
     def cat_tensors_to_optimizer(self, tensors_dict):
         optimizable_tensors = {}
@@ -485,6 +487,7 @@ class GaussianModel:
         return position_error.mean() + rotation_error.mean() + scaling_erorr.mean()
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
+        # import ipdb; ipdb.set_trace()
         self.xyz_gradient_accum[update_filter] += torch.norm(viewspace_point_tensor[update_filter,:2], dim=-1, keepdim=True)
         self.denom[update_filter] += 1
 
