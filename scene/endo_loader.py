@@ -106,6 +106,7 @@ class EndoNeRF_Dataset(object):
         # get paths of images, depths, masks, etc.
         agg_fn = lambda filetype: sorted(glob.glob(os.path.join(self.root_dir, filetype, "*.png")))
         self.image_paths = agg_fn("images")
+        self.object_path = agg_fn("Annotations")
         if self.mode == 'binocular':
             self.depth_paths = agg_fn("disparity_stereomamba") # depth_scared
         elif self.mode == 'monocular':
@@ -128,10 +129,11 @@ class EndoNeRF_Dataset(object):
         
         for idx in tqdm(idxs):
             # mask / depth
-            mask_path = self.masks_paths[idx]
-            mask = Image.open(mask_path)
-            mask = 1 - np.array(mask) / 255.0
+            # mask_path = self.masks_paths[idx]
+            # mask = Image.open(mask_path)
+            # mask = 1 - np.array(mask) / 255.0
             depth_path = self.depth_paths[idx]
+            object_path = self.object_path[idx]
             if self.mode == 'binocular':
                 depth = np.array(Image.open(depth_path))
                 close_depth = np.percentile(depth[depth!=0], 3.0)
@@ -145,11 +147,20 @@ class EndoNeRF_Dataset(object):
             else:
                 raise ValueError(f"{self.mode} has not been implemented.")
             depth = torch.from_numpy(depth)
-            mask = self.transform(mask).bool()
-            # color
-            color = np.array(Image.open(self.image_paths[idx]))/255.0
-            image = self.transform(color)
             
+            # color
+            color = np.array(Image.open(self.image_paths[idx])) / 255.0
+            image = self.transform(color)
+            # import ipdb; ipdb.set_trace()
+            object = np.array(Image.open(object_path).convert('L'))
+            # object_gt = np.array(object)
+            object_gt = torch.from_numpy(object)
+            # import ipdb; ipdb.set_trace()
+
+            mask = 1 - object / 255.0
+            mask[mask != 1] = 0
+            mask = self.transform(mask).bool()
+
             # times           
             time = self.image_times[idx]
             # poses
@@ -158,9 +169,10 @@ class EndoNeRF_Dataset(object):
             FovX = focal2fov(self.focal[0], self.img_wh[0])
             FovY = focal2fov(self.focal[1], self.img_wh[1])
             
-            cameras.append(Camera(colmap_id=idx,R=R,T=T,FoVx=FovX,FoVy=FovY,image=image, depth=depth, mask=mask, gt_alpha_mask=None,
+            cameras.append(Camera(colmap_id=idx,R=R,T=T,FoVx=FovX,FoVy=FovY,image=image, depth=depth, mask=mask, gt_alpha_mask=None, object=object_gt,
                           image_name=f"{idx}",uid=idx,data_device=torch.device("cuda"),time=time,
                           Znear=None, Zfar=None))
+        
         return cameras
 
 

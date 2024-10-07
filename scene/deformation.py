@@ -47,6 +47,7 @@ class Deformation(nn.Module):
         if time_emb is None:
             return self.forward_static(rays_pts_emb[:,:3])
         else:
+            
             return self.forward_dynamic(rays_pts_emb, scales_emb, rotations_emb, opacity, time_emb)
 
     def forward_static(self, rays_pts_emb):
@@ -56,6 +57,7 @@ class Deformation(nn.Module):
 
     def forward_dynamic(self,rays_pts_emb, scales_emb, rotations_emb, opacity_emb, time_emb):
         hidden = self.query_time(rays_pts_emb, scales_emb, rotations_emb, time_emb).float()
+        # import ipdb; ipdb.set_trace()
         
         if self.args.no_dx:
             pts = rays_pts_emb[:, :3]
@@ -80,6 +82,12 @@ class Deformation(nn.Module):
         else:
             do = self.opacity_deform(hidden) 
             opacity = opacity_emb[:,:1] + do
+
+        # if self.args.no_dobj:
+        #     object = object_emb[:,:,:3]
+        # else:
+        #     dobj = self.object_deform(hidden)
+        #     object = object_emb[:,:,:3] + dobj
 
         return pts, scales, rotations, opacity
     
@@ -132,7 +140,7 @@ class deform_network(nn.Module):
 
     def forward_dynamic(self, point, scales=None, rotations=None, opacity=None, times_sel=None):
         # times_emb = poc_fre(times_sel, self.time_poc)
-        means3D, scales, rotations, opacity = self.deformation_net( point,
+        means3D, scales, rotations, opacity, = self.deformation_net( point,
                                                 scales,
                                                 rotations,
                                                 opacity,

@@ -38,7 +38,7 @@ class Scene:
             else:
                 self.loaded_iter = load_iteration
             print("Loading trained model at iteration {}".format(self.loaded_iter))
-        
+        # import ipdb; ipdb.set_trace()
         if os.path.exists(os.path.join(args.source_path, "sparse")) and args.extra_mark is None:
             scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval)
         elif os.path.exists(os.path.join(args.source_path, "poses_bounds.npy")) and args.extra_mark == 'endonerf':
@@ -49,7 +49,7 @@ class Scene:
             print("Found point_cloud.obj, assuming SCARED data!")
         else:
             assert False, "Could not recognize scene type!"
-        # import ipdb; ipdb.set_trace()
+        
         self.maxtime = scene_info.maxtime
         self.cameras_extent = scene_info.nerf_normalization["radius"]
         print("self.cameras_extent is ", self.cameras_extent)
@@ -64,18 +64,6 @@ class Scene:
         xyz_max = scene_info.point_cloud.points.max(axis=0)
         xyz_min = scene_info.point_cloud.points.min(axis=0)
 
-        # # 循环遍历列表中的每个元素
-        # for i in range(1, len(scene_info.point_cloud)):
-        #     # 计算当前元素的最大和最小值
-        #     current_max = scene_info.point_cloud[i].points.max(axis=0)
-        #     current_min = scene_info.point_cloud[i].points.min(axis=0)
-            
-        #     # 更新整体最大和最小值
-        #     xyz_max = np.maximum(xyz_max, current_max)
-        #     xyz_min = np.minimum(xyz_min, current_min)
-        # xyz_max = scene_info.point_cloud.points.max(axis=0)
-        # xyz_min = scene_info.point_cloud.points.min(axis=0)
-
         self.gaussians._deformation.deformation_net.grid.set_aabb(xyz_max,xyz_min)
         # import ipdb; ipdb.set_trace()
         if self.loaded_iter:
@@ -89,13 +77,8 @@ class Scene:
                                                     iteration_str,))
         else:
             if args.extra_mark == 'endonerf':
-                # for i in range(len(scene_info.point_cloud)):
                     # import ipdb; ipdb.set_trace()
                 self.gaussians.create_from_pcd(scene_info.point_cloud, args.camera_extent, self.maxtime)
-                    # gaussian_copy = copy.deepcopy(self.gaussians)
-                    # gaussian_copy.create_from_pcd(scene_info.point_cloud[i], args.camera_extent, self.maxtime)
-                    # # 将副本添加到 gaussians_list 列表中,列表中保存了两个scene.gaussian_model.GaussianModel
-                    # self.gaussians_list.append(gaussian_copy)
             else:
                 self.gaussians.create_from_pcd(scene_info.point_cloud, self.cameras_extent, self.maxtime)
 

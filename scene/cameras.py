@@ -18,7 +18,7 @@ class Camera(nn.Module):
     def __init__(self, colmap_id, R, T, FoVx, FoVy, image, depth, mask, gt_alpha_mask,
                  image_name, uid,
                  trans=np.array([0.0, 0.0, 0.0]), scale=1.0, 
-                 data_device = "cuda", time = 0, Znear=None, Zfar=None
+                 data_device = "cuda", object=None ,time = 0, Znear=None, Zfar=None
                  ):
         super(Camera, self).__init__()
 
@@ -31,6 +31,8 @@ class Camera(nn.Module):
         self.image_name = image_name
         self.time = time
         self.mask = mask
+        self.object = object
+        
         try:
             self.data_device = torch.device(data_device)
         except Exception as e:
@@ -42,6 +44,7 @@ class Camera(nn.Module):
         self.original_depth = depth
         self.image_width = self.original_image.shape[2]
         self.image_height = self.original_image.shape[1]
+
         if gt_alpha_mask is not None:
             self.original_image *= gt_alpha_mask
         else:
@@ -65,6 +68,11 @@ class Camera(nn.Module):
         self.projection_matrix = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx, fovY=self.FoVy).transpose(0,1) #
         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
         self.camera_center = self.world_view_transform.inverse()[3, :3]
+
+        if object is not None:
+            self.objects = object.to(self.data_device)
+        else:
+            self.objects = None
 
 class MiniCam:
     def __init__(self, width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform, time):

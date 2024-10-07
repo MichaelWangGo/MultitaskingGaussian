@@ -59,7 +59,9 @@ class ModelParams(ParamGroup):
         self.camera_extent = None
         self.mode = 'binocular'
         self.no_fine = False
-        self.init_pts = 200_000
+        self.init_pts = 200_000,
+        self._object_path = "object_mask",
+        self.num_classes = 16
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):
@@ -143,6 +145,12 @@ class OptimizationParams(ParamGroup):
         self.opacity_threshold_coarse = 0.005
         self.opacity_threshold_fine_init = 0.005
         self.opacity_threshold_fine_after = 0.005
+
+        self.reg3d_interval = 2
+        self.reg3d_k = 5
+        self.reg3d_lambda_val = 2
+        self.reg3d_max_points = 300000
+        self.reg3d_sample_size = 1000
         
         super().__init__(parser, "Optimization Parameters")
 

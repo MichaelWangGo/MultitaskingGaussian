@@ -29,6 +29,7 @@ from utils.general_utils import PILtoTorch
 from tqdm import tqdm
 
 class CameraInfo(NamedTuple):
+    # import ipdb; ipdb.set_trace()
     uid: int
     R: np.array
     T: np.array
@@ -39,7 +40,9 @@ class CameraInfo(NamedTuple):
     image_name: str
     width: int
     height: int
+    objects: np.array ##
     time : float
+    
    
 class SceneInfo(NamedTuple):
     point_cloud: List[BasicPointCloud]
@@ -74,7 +77,7 @@ def getNerfppNorm(cam_info):
 
     return {"translate": translate, "radius": radius}
 
-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, objects_folder):
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write('\r')
@@ -112,8 +115,12 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
         image_name = os.path.basename(image_path).split(".")[0]
         image = Image.open(image_path)
         image = PILtoTorch(image,None)
+        object_path = os.path.join(objects_folder, image_name + '.png')
+        objects = Image.open(object_path) if os.path.exists(object_path) else None
+
+        # import ipdb; ipdb.set_trace()
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
-                              image_path=image_path, image_name=image_name, width=width, height=height,
+                              image_path=image_path, image_name=image_name, width=width, height=height, objects=objects,
                               time = 0)
         cam_infos.append(cam_info)
     sys.stdout.write('\n')
@@ -192,6 +199,7 @@ def readColmapSceneInfo(path, images, eval, llffhold=8):
                            maxtime=0,
                            nerf_normalization=nerf_normalization,
                            ply_path=ply_path)
+    
     return scene_info
 
 def readEndoNeRFInfo(datadir, mode):
@@ -255,7 +263,7 @@ def readEndoNeRFInfo(datadir, mode):
                            nerf_normalization=nerf_normalization,
                            ply_path=ply_path,
                            maxtime=maxtime)
-    
+    # import ipdb; ipdb.set_trace()
     return scene_info
     
 def readScaredInfo(datadir, mode, init_pts):

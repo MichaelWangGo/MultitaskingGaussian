@@ -14,6 +14,8 @@ import numpy as np
 from utils.general_utils import PILtoTorch
 from utils.graphics_utils import fov2focal
 
+import torch
+
 WARNED = False
 
 def loadCam(args, id, cam_info, resolution_scale):
@@ -22,6 +24,7 @@ def loadCam(args, id, cam_info, resolution_scale):
                   FoVx=cam_info.FovX, FoVy=cam_info.FovY, 
                   image=cam_info.image, mask=None, gt_alpha_mask=None, depth=None,
                   image_name=cam_info.image_name, uid=id, data_device=args.data_device, 
+                  objects=torch.from_numpy(np.array(cam_info.objects)),
                   time = cam_info.time)
 
 def cameraList_from_camInfos(cam_infos, resolution_scale, args):

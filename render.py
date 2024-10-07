@@ -44,15 +44,18 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     gts_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt")
     gtdepth_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt_depth")
     masks_path = os.path.join(model_path, name, "ours_{}".format(iteration), "masks")
+    object_path = os.path.join(model_path, name, "ours_{}".format(iteration), "object")
 
     makedirs(render_path, exist_ok=True)
     makedirs(depth_path, exist_ok=True)
     makedirs(gts_path, exist_ok=True)
     makedirs(gtdepth_path, exist_ok=True)
     makedirs(masks_path, exist_ok=True)
+    makedirs(object_path, exist_ok=True)
     
     render_images = []
     render_depths = []
+    render_object = []
     gt_list = []
     gt_depths = []
     mask_list = []
@@ -62,6 +65,7 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
         rendering = render(view, gaussians, pipeline, background, stage=stage)
         render_depths.append(rendering["depth"].cpu())
         render_images.append(rendering["render"].cpu())
+        render_object.append(rendering["render_object"].cpu())
         if name in ["train", "test", "video"]:
             gt = view.original_image[0:3, :, :]
             gt_list.append(gt)
@@ -93,6 +97,13 @@ def render_set(model_path, name, iteration, views, gaussians, pipeline, backgrou
     if len(render_images) != 0:
         for image in tqdm(render_images):
             torchvision.utils.save_image(image, os.path.join(render_path, '{0:05d}'.format(count) + ".png"))
+            count +=1
+
+    count = 0
+    print("writing rendering objects.")
+    if len(render_object) != 0:
+        for image in tqdm(render_object):
+            torchvision.utils.save_image(image, os.path.join(object_path, '{0:05d}'.format(count) + ".png"))
             count +=1
     
     count = 0
@@ -143,7 +154,7 @@ def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : P
     psutil.Process().cpu_affinity(cpu_list)
     
     with torch.no_grad():
-        gaussians = GaussianModel(dataset.sh_degree, hyperparam, class_num=2)
+        gaussians = GaussianModel(dataset.sh_degree, hyperparam)
         # import pdb; pdb.set_trace()
         scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False, load_coarse=dataset.no_fine)
 
